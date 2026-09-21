@@ -1,0 +1,35 @@
+{
+  "schema": "1.1",
+  "type": "whmcs-addons",
+  "name": "chatwoot",
+  "license": "proprietary",
+  "category": "support",
+  "logo": {
+    "filename": "logo.png"
+  },
+  "description": {
+    "name": "Chatwoot Live Chat & CRM",
+    "tagline": "Seamless Chatwoot live chat widget integration with logged-in user auto-sync and Agent CRM sidebar for WHMCS",
+    "long": "A modern, complete WHMCS addon module by Bahari IT that seamlessly integrates Chatwoot Live Chat into your WHMCS client area and public pages, automatically identifies logged-in clients with HMAC identity verification, and embeds a powerful WHMCS CRM Dashboard App inside Chatwoot for support agents.",
+    "features": [
+      "Automatic Chatwoot Live Chat widget injection into client area and public pages",
+      "Logged-in client auto-sync (Name, Email, Phone, Client ID, Balance)",
+      "HMAC Identity Verification to prevent user impersonation",
+      "Visibility control: Show to all visitors or logged-in clients only",
+      "Chatwoot Agent CRM Dashboard App displaying client services, invoices & tickets",
+      "One-click actions inside Chatwoot: Login as client, view full profile",
+      "Compatible with app.chatwoot.com and self-hosted Chatwoot installations"
+    ]
+  },
+  "support": {
+    "homepage": "https://bahari-it.com",
+    "learn_more": "https://bahari-it.com",
+    "docs_url": "https://bahari-it.com"
+  },
+  "authors": [
+    {
+      "name": "Bahari IT",
+      "homepage": "https://bahari-it.com"
+    }
+  ]
+}
