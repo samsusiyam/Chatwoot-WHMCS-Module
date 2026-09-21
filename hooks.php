@@ -114,6 +114,15 @@ add_hook('ClientAreaFooterOutput', 1, function ($vars) {
                     });
                 ";
             }
+        } else {
+            // Guest or Logged-out user: reset Chatwoot session to clear previous user's cookies/localStorage
+            $clientScript = "
+                window.addEventListener('chatwoot:ready', function () {
+                    if (window.\$chatwoot) {
+                        window.\$chatwoot.reset();
+                    }
+                });
+            ";
         }
 
         // Widget Script
