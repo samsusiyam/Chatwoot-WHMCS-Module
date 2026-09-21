@@ -27,7 +27,6 @@ function chatwoot_config()
         'author' => 'Bahari IT',
         'language' => 'english',
         'version' => '1.0.0',
-        'logo' => 'logo.png',
         'fields' => [
             'base_url' => [
                 'FriendlyName' => 'Chatwoot Base URL',
