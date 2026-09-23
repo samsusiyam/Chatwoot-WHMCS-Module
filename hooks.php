@@ -5,7 +5,7 @@
  * @package    WHMCS
  * @author     Bahari IT
  * @copyright  Copyright (c) 2026 Bahari IT
- * @version    1.0.0
+ * @version    2.0.0
  */
 
 if (!defined("WHMCS")) {
@@ -14,35 +14,32 @@ if (!defined("WHMCS")) {
 
 use WHMCS\Database\Capsule;
 
+require_once __DIR__ . '/chatwoot.php';
+
 /**
  * Injects Chatwoot live chat widget into WHMCS Client Area Footer
  */
 add_hook('ClientAreaFooterOutput', 1, function ($vars) {
     try {
-        // Fetch Chatwoot module configuration
-        $configRows = Capsule::table('tbladdonmodules')
-            ->where('module', 'chatwoot')
-            ->get();
-
-        if ($configRows->isEmpty()) {
+        // Check if widget is enabled
+        $widgetEnabled = chatwoot_get_setting('widget_enabled', 'on') === 'on';
+        if (!$widgetEnabled) {
             return '';
         }
 
-        $config = [];
-        foreach ($configRows as $row) {
-            $config[$row->setting] = $row->value;
-        }
-
-        $websiteToken = trim($config['website_token'] ?? '');
+        $websiteToken = trim(chatwoot_get_setting('website_token', ''));
         if (empty($websiteToken)) {
             return '';
         }
 
-        $baseUrl = rtrim($config['base_url'] ?: 'https://app.chatwoot.com', '/');
-        $visibility = $config['visibility'] ?? 'all';
-        $hmacToken = trim($config['hmac_token'] ?? '');
-        $widgetPosition = $config['widget_position'] ?? 'right';
-        $syncAttributes = ($config['sync_attributes'] ?? 'yes') === 'yes' || ($config['sync_attributes'] ?? '') === 'on';
+        $baseUrl        = rtrim(chatwoot_get_setting('base_url', 'https://app.chatwoot.com'), '/');
+        $visibility     = chatwoot_get_setting('visibility', 'all');
+        $hmacToken      = trim(chatwoot_get_setting('hmac_token', ''));
+        $widgetPosition = chatwoot_get_setting('widget_position', 'right');
+        $launcherTitle  = chatwoot_get_setting('widget_launcher_title', 'Chat with us');
+        $syncProfile    = chatwoot_get_setting('sync_client_profile', 'on') === 'on';
+        $syncAvatar     = chatwoot_get_setting('sync_avatar', 'on') === 'on';
+        $syncAttributes = chatwoot_get_setting('sync_attributes', 'on') === 'on';
 
         // Check user session
         $uid = isset($_SESSION['uid']) ? (int)$_SESSION['uid'] : 0;
@@ -52,7 +49,7 @@ add_hook('ClientAreaFooterOutput', 1, function ($vars) {
         }
 
         $clientScript = '';
-        if ($uid > 0) {
+        if ($uid > 0 && $syncProfile) {
             $client = Capsule::table('tblclients')->where('id', $uid)->first();
             if ($client) {
                 $fullName = trim($client->firstname . ' ' . $client->lastname);
@@ -94,8 +91,11 @@ add_hook('ClientAreaFooterOutput', 1, function ($vars) {
                     'name' => $fullName,
                     'email' => $email,
                     'phone_number' => $cleanPhone ?: null,
-                    'avatar_url' => 'https://www.gravatar.com/avatar/' . md5(strtolower($email)) . '?s=120&d=mp',
                 ];
+
+                if ($syncAvatar && !empty($email)) {
+                    $userData['avatar_url'] = 'https://www.gravatar.com/avatar/' . md5(strtolower($email)) . '?s=120&d=mp';
+                }
 
                 if (!empty($identifierHash)) {
                     $userData['identifier_hash'] = $identifierHash;
@@ -115,7 +115,7 @@ add_hook('ClientAreaFooterOutput', 1, function ($vars) {
                 ";
             }
         } else {
-            // Guest or Logged-out user: reset Chatwoot session to clear previous user's cookies/localStorage
+            // Guest or Logged-out user: reset Chatwoot session
             $clientScript = "
                 window.addEventListener('chatwoot:ready', function () {
                     if (window.\$chatwoot) {
@@ -125,10 +125,11 @@ add_hook('ClientAreaFooterOutput', 1, function ($vars) {
             ";
         }
 
-        // Widget Script
+        // Widget Script Configuration
         $widgetConfig = json_encode([
             'position' => $widgetPosition,
             'type' => 'standard',
+            'launcherTitle' => $launcherTitle,
         ]);
 
         $output = <<<HTML
