@@ -15,6 +15,12 @@ if (!defined("WHMCS")) {
     die("This file cannot be accessed directly");
 }
 
+if (defined('CHATWOOT_ADDON_MODULE_LOADED')) {
+    return;
+}
+
+define('CHATWOOT_ADDON_MODULE_LOADED', true);
+
 use WHMCS\Database\Capsule;
 
 // Helper: Ensure module settings table exists
@@ -185,23 +191,25 @@ if (!function_exists('chatwoot_h')) {
  *
  * @return array
  */
-function chatwoot_config()
-{
-    return [
-        'name'        => 'Chatwoot Live Chat & CRM',
-        'description' => '<div style="margin-top:10px;padding:14px;background:#f8f9fa;border:1px solid #e2e8f0;border-radius:8px;border-left:4px solid #1e3a5f;font-size:13.5px;line-height:1.6;color:#334155;"><div style="font-weight:700;color:#1e293b;margin-bottom:6px;"><i class="fas fa-comments" style="color:#1e3a5f;margin-right:6px;"></i>Chatwoot Live Chat & Agent CRM for WHMCS</div>Seamless Chatwoot live chat widget integration with logged-in user auto-sync, HMAC identity security, and Chatwoot Agent CRM Dashboard App for WHMCS — all configured from a unified module interface.</div>',
-        'version'     => '2.0.0',
-        'author'      => '<a href="https://client.bahariit.com" target="_blank" style="color:#1e3a5f;font-weight:700;text-decoration:none;"><i class="fas fa-shield-alt" style="margin-right:5px;font-size:12px;"></i> BahariIT</a>',
-        'language'    => 'english',
-        'fields'      => [
-            'option1' => [
-                'FriendlyName' => 'Module Status',
-                'Type'         => 'yesno',
-                'Description'  => 'Tick to enable the module (Manage all settings in Addons -> Chatwoot Live Chat & CRM)',
-                'Default'      => 'yes',
+if (!function_exists('chatwoot_config')) {
+    function chatwoot_config()
+    {
+        return [
+            'name'        => 'Chatwoot Live Chat & CRM',
+            'description' => '<div style="margin-top:10px;padding:14px;background:#f8f9fa;border:1px solid #e2e8f0;border-radius:8px;border-left:4px solid #1e3a5f;font-size:13.5px;line-height:1.6;color:#334155;"><div style="font-weight:700;color:#1e293b;margin-bottom:6px;"><i class="fas fa-comments" style="color:#1e3a5f;margin-right:6px;"></i>Chatwoot Live Chat & Agent CRM for WHMCS</div>Seamless Chatwoot live chat widget integration with logged-in user auto-sync, HMAC identity security, and Chatwoot Agent CRM Dashboard App for WHMCS — all configured from a unified module interface.</div>',
+            'version'     => '2.0.0',
+            'author'      => '<a href="https://client.bahariit.com" target="_blank" style="color:#1e3a5f;font-weight:700;text-decoration:none;"><i class="fas fa-shield-alt" style="margin-right:5px;font-size:12px;"></i> BahariIT</a>',
+            'language'    => 'english',
+            'fields'      => [
+                'option1' => [
+                    'FriendlyName' => 'Module Status',
+                    'Type'         => 'yesno',
+                    'Description'  => 'Tick to enable the module (Manage all settings in Addons -> Chatwoot Live Chat & CRM)',
+                    'Default'      => 'yes',
+                ],
             ],
-        ],
-    ];
+        ];
+    }
 }
 
 /**
@@ -209,15 +217,17 @@ function chatwoot_config()
  *
  * @return array
  */
-function chatwoot_activate()
-{
-    chatwoot_ensure_settings_table();
-    chatwoot_seed_default_settings();
+if (!function_exists('chatwoot_activate')) {
+    function chatwoot_activate()
+    {
+        chatwoot_ensure_settings_table();
+        chatwoot_seed_default_settings();
 
-    return [
-        'status' => 'success',
-        'description' => 'Chatwoot Live Chat & CRM module activated successfully.'
-    ];
+        return [
+            'status' => 'success',
+            'description' => 'Chatwoot Live Chat & CRM module activated successfully.'
+        ];
+    }
 }
 
 /**
@@ -225,21 +235,25 @@ function chatwoot_activate()
  *
  * @return array
  */
-function chatwoot_deactivate()
-{
-    return [
-        'status' => 'success',
-        'description' => 'Chatwoot Live Chat & CRM module deactivated successfully. Settings have been preserved in database.'
-    ];
+if (!function_exists('chatwoot_deactivate')) {
+    function chatwoot_deactivate()
+    {
+        return [
+            'status' => 'success',
+            'description' => 'Chatwoot Live Chat & CRM module deactivated successfully. Settings have been preserved in database.'
+        ];
+    }
 }
 
 /**
  * Upgrade addon module.
  */
-function chatwoot_upgrade($vars)
-{
-    chatwoot_ensure_settings_table();
-    chatwoot_seed_default_settings();
+if (!function_exists('chatwoot_upgrade')) {
+    function chatwoot_upgrade($vars)
+    {
+        chatwoot_ensure_settings_table();
+        chatwoot_seed_default_settings();
+    }
 }
 
 /**
@@ -1416,77 +1430,79 @@ if (!function_exists('chatwoot_render_developer_page')) {
 /**
  * Main Admin Output Function
  */
-function chatwoot_output($vars)
-{
-    $action = isset($_GET['action']) ? (string) $_GET['action'] : 'widget_settings';
+if (!function_exists('chatwoot_output')) {
+    function chatwoot_output($vars)
+    {
+        $action = isset($_GET['action']) ? (string) $_GET['action'] : 'widget_settings';
 
-    // POST Handlers
-    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-        if ($action === 'save_widget_settings') {
-            chatwoot_save_setting('widget_enabled', !empty($_POST['widget_enabled']) ? 'on' : '');
-            chatwoot_save_setting('base_url', trim($_POST['base_url'] ?? 'https://app.chatwoot.com'));
-            chatwoot_save_setting('website_token', trim($_POST['website_token'] ?? ''));
-            chatwoot_save_setting('visibility', in_array($_POST['visibility'] ?? '', ['all', 'logged_in'], true) ? $_POST['visibility'] : 'all');
-            chatwoot_save_setting('widget_position', in_array($_POST['widget_position'] ?? '', ['right', 'left'], true) ? $_POST['widget_position'] : 'right');
-            chatwoot_save_setting('widget_launcher_title', trim($_POST['widget_launcher_title'] ?? 'Chat with us'));
+        // POST Handlers
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            if ($action === 'save_widget_settings') {
+                chatwoot_save_setting('widget_enabled', !empty($_POST['widget_enabled']) ? 'on' : '');
+                chatwoot_save_setting('base_url', trim($_POST['base_url'] ?? 'https://app.chatwoot.com'));
+                chatwoot_save_setting('website_token', trim($_POST['website_token'] ?? ''));
+                chatwoot_save_setting('visibility', in_array($_POST['visibility'] ?? '', ['all', 'logged_in'], true) ? $_POST['visibility'] : 'all');
+                chatwoot_save_setting('widget_position', in_array($_POST['widget_position'] ?? '', ['right', 'left'], true) ? $_POST['widget_position'] : 'right');
+                chatwoot_save_setting('widget_launcher_title', trim($_POST['widget_launcher_title'] ?? 'Chat with us'));
 
-            header('Location: ' . $vars['modulelink'] . '&action=widget_settings&saved=1');
-            exit;
-        }
-
-        if ($action === 'save_crm_settings') {
-            chatwoot_save_setting('crm_show_services', !empty($_POST['crm_show_services']) ? 'on' : '');
-            chatwoot_save_setting('crm_show_invoices', !empty($_POST['crm_show_invoices']) ? 'on' : '');
-            chatwoot_save_setting('crm_show_tickets', !empty($_POST['crm_show_tickets']) ? 'on' : '');
-            chatwoot_save_setting('crm_show_balance', !empty($_POST['crm_show_balance']) ? 'on' : '');
-            chatwoot_save_setting('crm_show_login_btn', !empty($_POST['crm_show_login_btn']) ? 'on' : '');
-
-            header('Location: ' . $vars['modulelink'] . '&action=crm_app&saved=1');
-            exit;
-        }
-
-        if ($action === 'save_security_settings') {
-            chatwoot_save_setting('hmac_token', trim($_POST['hmac_token'] ?? ''));
-            $newSecret = trim($_POST['crm_api_secret'] ?? '');
-            if (!empty($newSecret)) {
-                chatwoot_save_setting('crm_api_secret', $newSecret);
+                header('Location: ' . $vars['modulelink'] . '&action=widget_settings&saved=1');
+                exit;
             }
 
-            header('Location: ' . $vars['modulelink'] . '&action=security&saved=1');
-            exit;
+            if ($action === 'save_crm_settings') {
+                chatwoot_save_setting('crm_show_services', !empty($_POST['crm_show_services']) ? 'on' : '');
+                chatwoot_save_setting('crm_show_invoices', !empty($_POST['crm_show_invoices']) ? 'on' : '');
+                chatwoot_save_setting('crm_show_tickets', !empty($_POST['crm_show_tickets']) ? 'on' : '');
+                chatwoot_save_setting('crm_show_balance', !empty($_POST['crm_show_balance']) ? 'on' : '');
+                chatwoot_save_setting('crm_show_login_btn', !empty($_POST['crm_show_login_btn']) ? 'on' : '');
+
+                header('Location: ' . $vars['modulelink'] . '&action=crm_app&saved=1');
+                exit;
+            }
+
+            if ($action === 'save_security_settings') {
+                chatwoot_save_setting('hmac_token', trim($_POST['hmac_token'] ?? ''));
+                $newSecret = trim($_POST['crm_api_secret'] ?? '');
+                if (!empty($newSecret)) {
+                    chatwoot_save_setting('crm_api_secret', $newSecret);
+                }
+
+                header('Location: ' . $vars['modulelink'] . '&action=security&saved=1');
+                exit;
+            }
+
+            if ($action === 'save_client_sync') {
+                chatwoot_save_setting('sync_client_profile', !empty($_POST['sync_client_profile']) ? 'on' : '');
+                chatwoot_save_setting('sync_avatar', !empty($_POST['sync_avatar']) ? 'on' : '');
+                chatwoot_save_setting('sync_attributes', !empty($_POST['sync_attributes']) ? 'on' : '');
+
+                header('Location: ' . $vars['modulelink'] . '&action=client_sync&saved=1');
+                exit;
+            }
         }
 
-        if ($action === 'save_client_sync') {
-            chatwoot_save_setting('sync_client_profile', !empty($_POST['sync_client_profile']) ? 'on' : '');
-            chatwoot_save_setting('sync_avatar', !empty($_POST['sync_avatar']) ? 'on' : '');
-            chatwoot_save_setting('sync_attributes', !empty($_POST['sync_attributes']) ? 'on' : '');
-
-            header('Location: ' . $vars['modulelink'] . '&action=client_sync&saved=1');
-            exit;
+        if (!in_array($action, ['widget_settings', 'crm_app', 'security', 'client_sync', 'module_setup', 'changelog', 'developer_info'], true)) {
+            $action = 'widget_settings';
         }
+
+        echo chatwoot_render_header($vars, $action);
+
+        if ($action === 'crm_app') {
+            echo chatwoot_render_crm_app_page($vars);
+        } elseif ($action === 'security') {
+            echo chatwoot_render_security_page($vars);
+        } elseif ($action === 'client_sync') {
+            echo chatwoot_render_client_sync_page($vars);
+        } elseif ($action === 'module_setup') {
+            echo chatwoot_render_module_setup_page($vars);
+        } elseif ($action === 'changelog') {
+            echo chatwoot_render_changelog_page();
+        } elseif ($action === 'developer_info') {
+            echo chatwoot_render_developer_page();
+        } else {
+            echo chatwoot_render_widget_settings_page($vars);
+        }
+
+        echo chatwoot_render_footer($action);
     }
-
-    if (!in_array($action, ['widget_settings', 'crm_app', 'security', 'client_sync', 'module_setup', 'changelog', 'developer_info'], true)) {
-        $action = 'widget_settings';
-    }
-
-    echo chatwoot_render_header($vars, $action);
-
-    if ($action === 'crm_app') {
-        echo chatwoot_render_crm_app_page($vars);
-    } elseif ($action === 'security') {
-        echo chatwoot_render_security_page($vars);
-    } elseif ($action === 'client_sync') {
-        echo chatwoot_render_client_sync_page($vars);
-    } elseif ($action === 'module_setup') {
-        echo chatwoot_render_module_setup_page($vars);
-    } elseif ($action === 'changelog') {
-        echo chatwoot_render_changelog_page();
-    } elseif ($action === 'developer_info') {
-        echo chatwoot_render_developer_page();
-    } else {
-        echo chatwoot_render_widget_settings_page($vars);
-    }
-
-    echo chatwoot_render_footer($action);
 }
