@@ -42,7 +42,7 @@ if (empty($configSecret) || !hash_equals($configSecret, $requestSecret)) {
 
 // System URLs
 $systemUrl = rtrim(Capsule::table('tblconfiguration')->where('setting', 'SystemURL')->value('value') ?: '', '/');
-$adminFolder = 'admin'; // Standard WHMCS admin directory
+$adminFolder = chatwoot_get_admin_folder(); // Auto-detected or configured WHMCS admin directory
 
 // AJAX Live Search API
 if (isset($_GET['action']) && $_GET['action'] === 'search') {

@@ -134,6 +134,50 @@ if (!function_exists('chatwoot_save_setting')) {
     }
 }
 
+// Helper: Get custom or auto-detected admin folder path
+if (!function_exists('chatwoot_get_admin_folder')) {
+    function chatwoot_get_admin_folder()
+    {
+        // 1. Check module setting
+        $saved = trim(chatwoot_get_setting('custom_admin_folder', ''));
+        if (!empty($saved)) {
+            return trim($saved, '/');
+        }
+
+        // 2. Check global WHMCS variable
+        global $customadminpath;
+        if (!empty($customadminpath)) {
+            return trim($customadminpath, '/');
+        }
+
+        // 3. WHMCS 8+ API detection
+        try {
+            if (class_exists('\WHMCS\Config\Setting')) {
+                $custom = \WHMCS\Config\Setting::getValue('customadminpath');
+                if (!empty($custom)) {
+                    return trim($custom, '/');
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        // 4. Parse configuration.php directly if readable
+        try {
+            $configPath = dirname(__DIR__, 3) . '/configuration.php';
+            if (file_exists($configPath) && is_readable($configPath)) {
+                $content = @file_get_contents($configPath);
+                if ($content && preg_match('/\$customadminpath\s*=\s*[\'"]([^\'"]+)[\'"]\s*;/', $content, $matches)) {
+                    if (!empty($matches[1])) {
+                        return trim($matches[1], '/');
+                    }
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        // 5. Default fallback
+        return 'admin';
+    }
+}
+
 // Helper: Seed default settings if empty
 if (!function_exists('chatwoot_seed_default_settings')) {
     function chatwoot_seed_default_settings()
@@ -164,6 +208,7 @@ if (!function_exists('chatwoot_seed_default_settings')) {
             'crm_show_tickets'     => 'on',
             'crm_show_balance'     => 'on',
             'crm_show_login_btn'   => 'on',
+            'custom_admin_folder'  => '',
         ];
 
         foreach ($defaults as $key => $val) {
@@ -1269,10 +1314,46 @@ if (!function_exists('chatwoot_render_module_setup_page')) {
         $curlEnabled = function_exists('curl_version');
         $opensslEnabled = extension_loaded('openssl');
         $tableExists = Capsule::schema()->hasTable('mod_chatwoot_settings');
+        $adminFolder = chatwoot_get_admin_folder();
 
-        $html = '<div class="cw-card">
+        $html = '';
+        if (isset($_GET['saved'])) {
+            $html .= '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Module Setup settings saved successfully.</div>';
+        }
+
+        $html .= '<form method="post" action="' . chatwoot_h($moduleLink) . '&action=save_module_setup">
+        <div class="cw-card">
             <div class="cw-card-header">
-                <h3><i class="fas fa-cogs text-primary"></i> System Diagnostics &amp; Environment</h3>
+                <h3><i class="fas fa-cogs text-primary"></i> WHMCS Admin Directory Configuration</h3>
+                <span class="label label-success" style="padding:6px 12px;font-size:12px;border-radius:12px;">Auto-Detected: ' . chatwoot_h($adminFolder) . '</span>
+            </div>
+            <div class="cw-card-body">
+                <p style="font-size:13px;color:#475569;margin-bottom:16px;">
+                    If your WHMCS admin folder has been renamed (e.g. from <code>/admin/</code> to <code>/manager/</code> or <code>/staff/</code>), specify the folder name here. The Chatwoot CRM sidebar will generate direct one-click action links (<strong>Login as Client</strong>, <strong>View Summary</strong>, <strong>View Services/Invoices</strong>) using this path.
+                </p>
+                <div class="cw-form-group" style="margin-bottom:0;">
+                    <label>Admin Directory Path Name</label>
+                    <div class="input-group" style="max-width:400px;">
+                        <span class="input-group-addon" style="background:#f1f5f9;font-size:12px;font-weight:600;">' . chatwoot_h($systemUrl) . '/</span>
+                        <input type="text" name="custom_admin_folder" class="form-control" value="' . chatwoot_h($adminFolder) . '" placeholder="admin" required autocomplete="off">
+                        <span class="input-group-addon" style="background:#f1f5f9;font-size:12px;font-weight:600;">/</span>
+                    </div>
+                    <div class="help-block">Default is <code>admin</code>. Matches <code>$customadminpath</code> from your WHMCS configuration.php.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cw-actions-toolbar" style="margin-bottom:20px;">
+            <div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Admin Path</button>
+            </div>
+            <div class="cw-muted">Ensures all admin links inside Chatwoot direct to the correct path.</div>
+        </div>
+        </form>';
+
+        $html .= '<div class="cw-card">
+            <div class="cw-card-header">
+                <h3><i class="fas fa-server text-primary"></i> System Diagnostics &amp; Environment</h3>
                 <span class="label label-info" style="padding:6px 12px;font-size:12px;border-radius:12px;">WHMCS ' . chatwoot_h($vars['whmcsVersion'] ?? '8.x') . '</span>
             </div>
             <div class="cw-card-body">
@@ -1280,6 +1361,10 @@ if (!function_exists('chatwoot_render_module_setup_page')) {
                     <tr>
                         <th style="width:35%;background:#f8fafc;">WHMCS System URL</th>
                         <td><code>' . chatwoot_h($systemUrl) . '</code></td>
+                    </tr>
+                    <tr>
+                        <th style="background:#f8fafc;">Admin Directory Path</th>
+                        <td><code>' . chatwoot_h($systemUrl . '/' . $adminFolder . '/') . '</code> <span class="label label-success">Active</span></td>
                     </tr>
                     <tr>
                         <th style="background:#f8fafc;">PHP Version</th>
@@ -1303,7 +1388,7 @@ if (!function_exists('chatwoot_render_module_setup_page')) {
 
         <div class="cw-actions-toolbar">
             <div>
-                <a href="' . chatwoot_h($moduleLink) . '&action=widget_settings" class="btn btn-primary"><i class="fas fa-arrow-left"></i> Back to Widget Settings</a>
+                <a href="' . chatwoot_h($moduleLink) . '&action=widget_settings" class="btn btn-default"><i class="fas fa-arrow-left"></i> Back to Widget Settings</a>
             </div>
             <div class="cw-muted">Module Version: 2.0.0 &bull; Built with standard WHMCS Capsule ORM</div>
         </div>';
@@ -1326,6 +1411,7 @@ if (!function_exists('chatwoot_render_changelog_page')) {
                     ['type' => 'new', 'text' => 'Redesigned the entire module admin interface into a unified, high-productivity tabbed experience inspired by the modern WHMCS enterprise standard.'],
                     ['type' => 'new', 'text' => 'Moved all configuration options from the WHMCS Addon config page directly into the dedicated module admin dashboard with instant flash feedback.'],
                     ['type' => 'new', 'text' => 'Added live interactive Client Search in the Chatwoot Agent CRM App sidebar (search by Name, Email, Phone, Domain, or Client ID) with AJAX lookups.'],
+                    ['type' => 'new', 'text' => 'Added automatic WHMCS Custom Admin Directory ($customadminpath) detection & override support so links like "Login as Client" work even when admin folder is renamed.'],
                     ['type' => 'improved', 'text' => 'Fixed the {{contact.email}} unreplaced template token issue gracefully when Chatwoot passes unpopulated email attributes.'],
                     ['type' => 'improved', 'text' => 'Added real-time postMessage listener for Chatwoot dashboard events (chatwoot:dashboard-app:context / appContext) to dynamically bind customer context.'],
                     ['type' => 'new', 'text' => 'Added dedicated mod_chatwoot_settings database table with automatic legacy migration.'],
@@ -1435,6 +1521,15 @@ if (!function_exists('chatwoot_output')) {
     {
         $action = isset($_GET['action']) ? (string) $_GET['action'] : 'widget_settings';
 
+        // Auto-detect admin directory from current script path if not set
+        $currentScriptDir = basename(dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+        if (!empty($currentScriptDir) && $currentScriptDir !== '.' && $currentScriptDir !== '/' && $currentScriptDir !== 'addons') {
+            $existing = chatwoot_get_setting('custom_admin_folder', '');
+            if (empty($existing)) {
+                chatwoot_save_setting('custom_admin_folder', $currentScriptDir);
+            }
+        }
+
         // POST Handlers
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             if ($action === 'save_widget_settings') {
@@ -1477,6 +1572,16 @@ if (!function_exists('chatwoot_output')) {
                 chatwoot_save_setting('sync_attributes', !empty($_POST['sync_attributes']) ? 'on' : '');
 
                 header('Location: ' . $vars['modulelink'] . '&action=client_sync&saved=1');
+                exit;
+            }
+
+            if ($action === 'save_module_setup') {
+                $adminFolderInput = trim($_POST['custom_admin_folder'] ?? 'admin', '/');
+                if (!empty($adminFolderInput)) {
+                    chatwoot_save_setting('custom_admin_folder', $adminFolderInput);
+                }
+
+                header('Location: ' . $vars['modulelink'] . '&action=module_setup&saved=1');
                 exit;
             }
         }
